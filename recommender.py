@@ -162,7 +162,8 @@ class MovieRecommender:
         print("Computing pairwise cosine similarity...")
         similarity = cosine_similarity(embeddings)
 
-        self.df = df[["movie_id", "title", "genres_parsed", "vote_average",
+        self.df = df[["movie_id", "title", "overview", "genres_parsed",
+                      "cast_parsed", "director", "vote_average",
                       "vote_count", "popularity", "release_date"]].reset_index(drop=True)
         self.similarity    = similarity
         self.movie_indices = pd.Series(self.df.index, index=self.df["title"])
@@ -199,11 +200,15 @@ class MovieRecommender:
             row = self.df.iloc[i]
             results.append({
                 "title":      row["title"],
+                "movie_id":   int(row["movie_id"])           if pd.notna(row.get("movie_id"))      else None,
                 "score":      round(float(score), 4),
                 "genres":     row.get("genres_parsed", []),
-                "rating":     float(row["vote_average"])    if pd.notna(row.get("vote_average"))  else None,
-                "vote_count": int(row["vote_count"])        if pd.notna(row.get("vote_count"))    else None,
-                "year":       str(row["release_date"])[:4]  if pd.notna(row.get("release_date"))  else None,
+                "overview":   str(row["overview"])           if pd.notna(row.get("overview"))      else "",
+                "cast":       row.get("cast_parsed", []),
+                "director":   row.get("director", []),
+                "rating":     float(row["vote_average"])     if pd.notna(row.get("vote_average"))  else None,
+                "vote_count": int(row["vote_count"])         if pd.notna(row.get("vote_count"))    else None,
+                "year":       str(row["release_date"])[:4]   if pd.notna(row.get("release_date"))  else None,
             })
         return results
 

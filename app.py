@@ -80,6 +80,52 @@ def build():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/poster', methods=['GET'])
+def poster():
+    """
+    Fetch poster + backdrop from TMDB API.
+    Requires TMDB_API_KEY env var (free at https://www.themoviedb.org/settings/api)
+    Falls back gracefully if no key is set.
+    """
+    import os, urllib.request, json as _json
+    title    = request.args.get('title', '').strip()
+    movie_id = request.args.get('movie_id', '').strip()
+    api_key  = os.environ.get('TMDB_API_KEY', '')
+
+    if not api_key:
+        return jsonify({'poster': None, 'backdrop': None, 'overview': None})
+
+    try:
+        # Search by TMDB movie_id first (most accurate)
+        if movie_id:
+            url = f'https://api.themoviedb.org/3/movie/{movie_id}?api_key={api_key}'
+        else:
+            q = urllib.parse.quote(title)
+            url = f'https://api.themoviedb.org/3/search/movie?api_key={api_key}&query={q}&page=1'
+
+        import urllib.parse
+        req  = urllib.request.Request(url, headers={'User-Agent': 'CineMatch/1.0'})
+        resp = urllib.request.urlopen(req, timeout=5)
+        data = _json.loads(resp.read())
+
+        base = 'https://image.tmdb.org/t/p/'
+
+        if movie_id:
+            poster   = (base + 'w342' + data['poster_path'])   if data.get('poster_path')   else None
+            backdrop = (base + 'w780' + data['backdrop_path']) if data.get('backdrop_path') else None
+            overview = data.get('overview')
+        else:
+            results  = data.get('results', [])
+            hit      = results[0] if results else {}
+            poster   = (base + 'w342' + hit['poster_path'])   if hit.get('poster_path')   else None
+            backdrop = (base + 'w780' + hit['backdrop_path']) if hit.get('backdrop_path') else None
+            overview = hit.get('overview')
+
+        return jsonify({'poster': poster, 'backdrop': backdrop, 'overview': overview})
+    except Exception as e:
+        return jsonify({'poster': None, 'backdrop': None, 'overview': None})
+
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug = os.environ.get('FLASK_ENV', 'production') == 'development'

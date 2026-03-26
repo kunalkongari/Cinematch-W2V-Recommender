@@ -5,405 +5,527 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CineMatch — AI Movie Recommender</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg:        #0a0a0f;
-    --surface:   #11111a;
-    --card:      #16161f;
-    --border:    #252535;
-    --accent:    #e8501a;
-    --accent2:   #f4a261;
-    --text:      #e8e8f0;
-    --muted:     #6b6b88;
-    --success:   #2ecc71;
-    --gold:      #f4c542;
-  }
+:root {
+  --bg:      #08080e;
+  --surface: #0f0f18;
+  --card:    #13131e;
+  --border:  #1f1f30;
+  --accent:  #e8501a;
+  --amber:   #f4a261;
+  --text:    #eaeaf4;
+  --muted:   #5a5a78;
+  --dim:     #2a2a40;
+  --green:   #27ae60;
+  --gold:    #f4c030;
+  --radius:  6px;
+}
 
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 15px;
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
+html { scroll-behavior: smooth; }
 
-  /* ── background film-grain overlay ─────────────────────────── */
-  body::before {
-    content: '';
-    position: fixed; inset: 0; z-index: 0; pointer-events: none;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
-    opacity: 0.35;
-  }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
 
-  /* ── header ─────────────────────────────────────────────────── */
-  header {
-    position: relative; z-index: 10;
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 1.4rem 3rem;
-    border-bottom: 1px solid var(--border);
-    backdrop-filter: blur(12px);
-    background: rgba(10,10,15,.85);
-  }
+/* film-grain */
+body::after {
+  content: '';
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+}
 
-  .logo {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 2rem;
-    letter-spacing: 0.06em;
-    color: var(--text);
-  }
-  .logo span { color: var(--accent); }
+/* ═══════════════════════ HEADER ═══════════════════════ */
+header {
+  position: sticky; top: 0; z-index: 200;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1.1rem 2.5rem;
+  border-bottom: 1px solid var(--border);
+  background: rgba(8,8,14,.92);
+  backdrop-filter: blur(16px);
+}
 
-  .status-dot {
-    width: 8px; height: 8px; border-radius: 50%;
-    background: var(--muted); display: inline-block;
-    transition: background .4s;
-  }
-  .status-dot.ready { background: var(--success); box-shadow: 0 0 8px var(--success); }
+.logo {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.8rem; letter-spacing: .08em;
+}
+.logo span { color: var(--accent); }
 
-  /* ── hero ────────────────────────────────────────────────────── */
-  .hero {
-    position: relative; z-index: 5;
-    text-align: center;
-    padding: 6rem 2rem 3rem;
-  }
+.header-right {
+  display: flex; align-items: center; gap: .5rem;
+  font-size: .78rem; color: var(--muted);
+}
+.dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--muted); flex-shrink: 0;
+  transition: background .4s, box-shadow .4s;
+}
+.dot.on { background: var(--green); box-shadow: 0 0 7px var(--green); }
 
-  .hero-eyebrow {
-    font-size: .75rem; letter-spacing: .2em; text-transform: uppercase;
-    color: var(--accent); margin-bottom: 1rem;
-  }
+/* ═══════════════════════ HERO ═══════════════════════ */
+.hero {
+  position: relative; z-index: 1;
+  text-align: center;
+  padding: 5.5rem 1.5rem 2.5rem;
+}
+.eyebrow {
+  font-size: .68rem; letter-spacing: .22em; text-transform: uppercase;
+  color: var(--accent); margin-bottom: .9rem;
+}
+.hero h1 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(3.2rem, 8vw, 6.8rem);
+  line-height: .95; letter-spacing: .03em;
+  margin-bottom: 1.1rem;
+}
+.hero h1 em {
+  font-style: normal;
+  -webkit-text-stroke: 1.5px var(--accent);
+  color: transparent;
+}
+.hero p {
+  color: var(--muted); font-size: .95rem;
+  max-width: 440px; margin: 0 auto 2.2rem;
+  line-height: 1.75; font-weight: 300;
+}
 
-  .hero h1 {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: clamp(3.5rem, 8vw, 7rem);
-    line-height: 1;
-    letter-spacing: .03em;
-    color: var(--text);
-    margin-bottom: 1rem;
-  }
+/* ═══════════════════════ SEARCH ═══════════════════════ */
+.search-wrap {
+  position: relative; z-index: 100;
+  max-width: 640px; margin: 0 auto;
+  padding: 0 1.5rem 2.5rem;
+}
 
-  .hero h1 em {
-    font-style: normal;
-    -webkit-text-stroke: 1px var(--accent);
-    color: transparent;
-  }
+.search-row {
+  display: flex; align-items: stretch;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  overflow: visible;             /* let dropdown overflow */
+  transition: border-color .2s, box-shadow .2s;
+  position: relative;
+}
+.search-row:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(232,80,26,.14);
+}
 
-  .hero p {
-    color: var(--muted); font-size: 1rem; max-width: 480px;
-    margin: 0 auto 2.5rem; line-height: 1.7; font-weight: 300;
-  }
+#searchInput {
+  flex: 1; background: transparent; border: none; outline: none;
+  color: var(--text); font-family: 'DM Sans', sans-serif;
+  font-size: 1rem; padding: .9rem 1.1rem;
+  caret-color: var(--accent);
+  min-width: 0;
+}
+#searchInput::placeholder { color: var(--muted); }
 
-  /* ── search box ──────────────────────────────────────────────── */
-  .search-wrap {
-    position: relative; z-index: 5;
-    max-width: 680px; margin: 0 auto; padding: 0 1.5rem 3rem;
-  }
+#searchBtn {
+  padding: 0 1.6rem;
+  background: var(--accent); border: none; cursor: pointer;
+  color: #fff; font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.05rem; letter-spacing: .1em;
+  border-radius: 0 var(--radius) var(--radius) 0;
+  transition: background .2s; flex-shrink: 0;
+  white-space: nowrap;
+}
+#searchBtn:hover { background: #c9401a; }
+#searchBtn:disabled { background: var(--muted); cursor: not-allowed; }
 
-  .search-input-row {
-    position: relative;
-    display: flex; align-items: center;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    overflow: hidden;
-    transition: border-color .25s, box-shadow .25s;
-  }
-  .search-input-row:focus-within {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(232,80,26,.15);
-  }
+/* ─── Autocomplete dropdown ─────────────────────────── */
+#acList {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);   /* just below the input row */
+  left: 0; right: 0;
+  background: var(--surface);
+  border: 1.5px solid var(--accent);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: 0 16px 40px rgba(0,0,0,.6);
+  z-index: 9999;
+  max-height: 300px; overflow-y: auto;
+}
+#acList.open { display: block; }
 
-  #searchInput {
-    flex: 1; background: transparent; border: none; outline: none;
-    color: var(--text); font-family: 'DM Sans', sans-serif;
-    font-size: 1rem; padding: 1rem 1.2rem;
-    caret-color: var(--accent);
-  }
-  #searchInput::placeholder { color: var(--muted); }
+.ac-item {
+  padding: .72rem 1.1rem;
+  cursor: pointer;
+  font-size: .92rem;
+  border-bottom: 1px solid rgba(255,255,255,.04);
+  transition: background .12s;
+  user-select: none;
+}
+.ac-item:last-child { border-bottom: none; }
+.ac-item:hover,
+.ac-item.selected {
+  background: rgba(232,80,26,.15);
+  color: #fff;
+}
 
-  #searchBtn {
-    padding: .75rem 1.6rem;
-    background: var(--accent); border: none; cursor: pointer;
-    color: #fff; font-family: 'Bebas Neue', sans-serif;
-    font-size: 1.05rem; letter-spacing: .08em;
-    transition: background .2s;
-    flex-shrink: 0;
-  }
-  #searchBtn:hover { background: #c94015; }
-  #searchBtn:disabled { background: var(--muted); cursor: default; }
+/* ═══════════════════════ BUILD BANNER ═══════════════════════ */
+#buildBanner {
+  position: relative; z-index: 1;
+  max-width: 640px; margin: 0 auto 1.5rem;
+  padding: .9rem 1.2rem;
+  background: rgba(232,80,26,.08);
+  border: 1px solid rgba(232,80,26,.3);
+  border-radius: var(--radius);
+  font-size: .84rem; color: var(--amber);
+  display: none;
+}
+#buildBanner a { color: var(--accent); text-decoration: underline; cursor: pointer; }
 
-  /* ── autocomplete ────────────────────────────────────────────── */
-  .autocomplete-list {
-    position: absolute; top: 100%; left: 0; right: 0;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-top: none; border-radius: 0 0 4px 4px;
-    overflow: hidden; z-index: 100;
-    max-height: 280px; overflow-y: auto;
-    display: none;
-  }
-  .autocomplete-list.open { display: block; }
-  .ac-item {
-    padding: .7rem 1.2rem; cursor: pointer; font-size: .9rem;
-    transition: background .15s;
-    border-bottom: 1px solid rgba(255,255,255,.04);
-  }
-  .ac-item:hover, .ac-item.selected { background: rgba(232,80,26,.12); }
+/* ═══════════════════════ TMDB API NOTICE ═══════════════════════ */
+#apiNotice {
+  position: relative; z-index: 1;
+  max-width: 640px; margin: 0 auto 1rem;
+  padding: .75rem 1.1rem;
+  background: rgba(244,162,97,.07);
+  border: 1px solid rgba(244,162,97,.25);
+  border-radius: var(--radius);
+  font-size: .82rem; color: var(--amber);
+  display: none;
+}
 
-  /* ── results area ────────────────────────────────────────────── */
-  #results {
-    position: relative; z-index: 5;
-    max-width: 1100px; margin: 0 auto; padding: 0 1.5rem 6rem;
-  }
+/* ═══════════════════════ RESULTS ═══════════════════════ */
+#results {
+  position: relative; z-index: 1;
+  max-width: 1160px; margin: 0 auto;
+  padding: 0 1.5rem 6rem;
+}
 
-  .results-header {
-    display: flex; align-items: baseline; gap: 1rem;
-    margin-bottom: 2rem;
-  }
-  .results-header h2 {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 1.6rem; letter-spacing: .06em; color: var(--text);
-  }
-  .results-header .query-title { color: var(--accent); }
-  .results-count { font-size: .8rem; color: var(--muted); }
+.results-hdr {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: .6rem 1rem;
+  margin-bottom: 1.8rem;
+}
+.results-hdr h2 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.55rem; letter-spacing: .06em;
+}
+.results-hdr .qtitle { color: var(--accent); }
+.results-hdr .rcount { font-size: .78rem; color: var(--muted); }
 
-  .cards-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 1.2rem;
-  }
+/* cards grid */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1.1rem;
+}
 
-  /* ── movie card ──────────────────────────────────────────────── */
-  .card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    overflow: hidden;
-    transition: transform .2s, border-color .2s, box-shadow .2s;
-    opacity: 0;
-    animation: fadeUp .4s forwards;
-  }
-  .card:hover {
-    transform: translateY(-4px);
-    border-color: rgba(232,80,26,.4);
-    box-shadow: 0 12px 32px rgba(0,0,0,.5);
-  }
+/* ─── Movie card ─────────────────────────────────────── */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  cursor: pointer;
+  opacity: 0;
+  animation: fadeUp .38s forwards;
+  transition: transform .22s, border-color .22s, box-shadow .22s;
+  display: flex; flex-direction: column;
+}
+.card:hover {
+  transform: translateY(-5px);
+  border-color: rgba(232,80,26,.45);
+  box-shadow: 0 16px 40px rgba(0,0,0,.55);
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(16px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
+/* poster area */
+.card-poster {
+  position: relative;
+  width: 100%; aspect-ratio: 2/3;
+  background: var(--dim);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.card-poster img {
+  width: 100%; height: 100%; object-fit: cover;
+  display: block;
+  transition: transform .4s, opacity .3s;
+  opacity: 0;
+}
+.card-poster img.loaded { opacity: 1; }
+.card:hover .card-poster img { transform: scale(1.04); }
 
-  .card-rank {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: .75rem; letter-spacing: .12em;
-    color: var(--muted); padding: .75rem 1rem .25rem;
-  }
+.poster-placeholder {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: .4rem; color: var(--muted); font-size: .75rem;
+}
+.poster-placeholder .film-icon { font-size: 2.2rem; opacity: .4; }
 
-  .card-body { padding: .25rem 1rem 1.1rem; }
+/* rank badge */
+.rank-badge {
+  position: absolute; top: .55rem; left: .55rem;
+  background: rgba(8,8,14,.85);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: .7rem; letter-spacing: .12em;
+  padding: .18rem .45rem; color: var(--muted);
+  backdrop-filter: blur(4px);
+}
 
-  .card-title {
-    font-size: 1rem; font-weight: 500; color: var(--text);
-    margin-bottom: .4rem; line-height: 1.3;
-  }
+/* match bar overlay at bottom of poster */
+.match-strip {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  height: 3px; background: var(--dim);
+}
+.match-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--amber));
+  width: 0; transition: width 1.1s ease;
+}
 
-  .card-meta {
-    display: flex; align-items: center; gap: .6rem;
-    flex-wrap: wrap; margin-bottom: .65rem;
-  }
-  .card-year { font-size: .78rem; color: var(--muted); }
-  .card-rating {
-    font-size: .78rem; color: var(--gold);
-    display: flex; align-items: center; gap: .2rem;
-  }
+/* card body */
+.card-body { padding: .85rem .95rem 1rem; flex: 1; display: flex; flex-direction: column; gap: .45rem; }
 
-  .card-genres {
-    display: flex; flex-wrap: wrap; gap: .35rem; margin-bottom: .75rem;
-  }
-  .genre-tag {
-    font-size: .68rem; text-transform: uppercase; letter-spacing: .08em;
-    padding: .2rem .55rem;
-    background: rgba(255,255,255,.05);
-    border: 1px solid var(--border);
-    border-radius: 2px; color: var(--muted);
-  }
+.card-title {
+  font-size: .96rem; font-weight: 500;
+  line-height: 1.3; color: var(--text);
+}
 
-  .card-score-bar {
-    height: 2px; background: var(--border); border-radius: 2px; overflow: hidden;
-  }
-  .card-score-fill {
-    height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2));
-    border-radius: 2px; transition: width 1s ease;
-  }
-  .card-score-label {
-    font-size: .72rem; color: var(--muted); margin-top: .35rem;
-    text-align: right;
-  }
+.card-meta {
+  display: flex; align-items: center; flex-wrap: wrap; gap: .4rem .65rem;
+}
+.card-year  { font-size: .74rem; color: var(--muted); }
+.card-stars { font-size: .74rem; color: var(--gold); }
 
-  /* ── loading spinner ─────────────────────────────────────────── */
-  .spinner {
-    display: none; text-align: center; padding: 4rem;
-  }
-  .spinner.active { display: block; }
-  .spin-ring {
-    width: 40px; height: 40px; border-radius: 50%;
-    border: 2px solid var(--border);
-    border-top-color: var(--accent);
-    animation: spin .7s linear infinite;
-    display: inline-block;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
+.card-genres {
+  display: flex; flex-wrap: wrap; gap: .3rem;
+}
+.gtag {
+  font-size: .63rem; text-transform: uppercase; letter-spacing: .07em;
+  padding: .18rem .5rem;
+  background: rgba(255,255,255,.04);
+  border: 1px solid var(--dim);
+  border-radius: 2px; color: var(--muted);
+}
 
-  /* ── error / empty ───────────────────────────────────────────── */
-  .message {
-    text-align: center; padding: 4rem 1rem;
-    color: var(--muted); font-size: .95rem; display: none;
-  }
-  .message.active { display: block; }
-  .message strong { color: var(--accent); display: block; font-size: 1.2rem; margin-bottom: .5rem; }
+.card-overview {
+  font-size: .78rem; line-height: 1.6;
+  color: var(--muted); font-weight: 300;
+  /* show 3 lines, fade at bottom */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  flex: 1;
+}
 
-  /* ── model status banner ─────────────────────────────────────── */
-  #buildBanner {
-    background: rgba(232,80,26,.1);
-    border: 1px solid rgba(232,80,26,.3);
-    border-radius: 4px;
-    padding: 1rem 1.5rem;
-    margin: 0 1.5rem 2rem;
-    max-width: 680px; margin-left: auto; margin-right: auto;
-    font-size: .88rem; color: var(--accent2); display: none;
-    position: relative; z-index: 5;
-  }
-  #buildBanner a {
-    color: var(--accent); text-decoration: underline; cursor: pointer;
-  }
+.card-cast {
+  font-size: .72rem; color: var(--muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.card-cast strong { color: rgba(234,234,244,.55); font-weight: 400; }
 
-  /* ── scrollbar ───────────────────────────────────────────────── */
-  ::-webkit-scrollbar { width: 4px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.match-label {
+  font-size: .7rem; color: var(--muted);
+  text-align: right; margin-top: auto; padding-top: .2rem;
+}
+
+/* ─── Spinner / messages ─────────────────────────────── */
+.spinner { display:none; text-align:center; padding:4rem; }
+.spinner.on { display:block; }
+.spin-ring {
+  display: inline-block; width: 36px; height: 36px;
+  border-radius: 50%;
+  border: 2px solid var(--border); border-top-color: var(--accent);
+  animation: spin .65s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.msg { display:none; text-align:center; padding:4rem 1rem; color:var(--muted); }
+.msg.on { display:block; }
+.msg strong { display:block; color:var(--accent); font-size:1.1rem; margin-bottom:.4rem; }
+
+/* ─── Scrollbar ──────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--dim); border-radius: 4px; }
 </style>
 </head>
 <body>
 
+<!-- HEADER -->
 <header>
   <div class="logo">Cine<span>Match</span></div>
-  <div style="display:flex;align-items:center;gap:.5rem;font-size:.8rem;color:var(--muted)">
-    <span class="status-dot" id="statusDot"></span>
+  <div class="header-right">
+    <span class="dot" id="dot"></span>
     <span id="statusLabel">Checking…</span>
   </div>
 </header>
 
+<!-- HERO -->
 <section class="hero">
-  <p class="hero-eyebrow">AI-Powered · TF-IDF + LSA · 5000 Films · Kunal Kongari · IISc Bangalore</p>
+  <p class="eyebrow">Word2Vec · Semantic NLP · 5000 Films · KUNAL KONGARI · IISc Bangalore</p>
   <h1>Find Your<br>Next <em>Obsession</em></h1>
-  <p>Type any movie and get semantically matched recommendations — powered by TF-IDF vectorization and Latent Semantic Analysis.</p>
+  <p>Type any movie title and get semantically matched recommendations powered by domain-trained Word2Vec embeddings.</p>
 </section>
 
+<!-- BUILD BANNER -->
 <div id="buildBanner">
-  ⚠ Model not loaded. Place <code>tmdb_5000_movies.csv</code> and <code>tmdb_5000_credits.csv</code> in the project root, then <a id="buildLink">click here to train</a>.
+  ⚠ Model not loaded. Place <code>tmdb_5000_movies.csv</code> &amp; <code>tmdb_5000_credits.csv</code> in the project root, then <a id="buildLink">click here to train</a>.
 </div>
 
+<!-- TMDB API NOTICE -->
+<div id="apiNotice">
+  💡 Add a free <strong>TMDB API key</strong> to see movie posters: set the env var <code>TMDB_API_KEY=your_key</code> before running the app.
+  Get a free key at <a href="https://www.themoviedb.org/settings/api" target="_blank" style="color:var(--accent)">themoviedb.org</a>.
+</div>
+
+<!-- SEARCH -->
 <div class="search-wrap">
-  <div class="search-input-row">
-    <input id="searchInput" type="text" placeholder="e.g. Inception, The Dark Knight, Parasite…" autocomplete="off">
+  <div class="search-row" id="searchRow">
+    <input id="searchInput" type="text"
+           placeholder="e.g. Inception, The Dark Knight, Parasite…"
+           autocomplete="off" spellcheck="false">
     <button id="searchBtn">Recommend</button>
   </div>
-  <div class="autocomplete-list" id="acList"></div>
+  <!-- Autocomplete lives OUTSIDE search-row so overflow:hidden doesn't clip it -->
+  <div id="acList"></div>
 </div>
 
+<!-- RESULTS -->
 <section id="results">
   <div class="spinner" id="spinner"><div class="spin-ring"></div></div>
-  <div class="message" id="emptyMsg"><strong>No results found.</strong>Try a different title.</div>
-  <div class="message" id="errorMsg"><strong id="errorText">Error</strong><span id="errorDetail"></span></div>
-  <div id="resultsHeader" class="results-header" style="display:none">
-    <h2>Because you liked <span class="query-title" id="queryLabel"></span></h2>
-    <span class="results-count" id="resultsCount"></span>
+  <div class="msg" id="emptyMsg"><strong>No results found.</strong>Try a different title.</div>
+  <div class="msg" id="errMsg"><strong id="errText">Error</strong><span id="errDetail"></span></div>
+  <div class="results-hdr" id="resultsHdr" style="display:none">
+    <h2>Because you liked <span class="qtitle" id="queryLabel"></span></h2>
+    <span class="rcount" id="rCount"></span>
   </div>
-  <div class="cards-grid" id="cardsGrid"></div>
+  <div class="grid" id="grid"></div>
 </section>
 
 <script>
+/* ── helpers ──────────────────────────────────────────────────────── */
 const $ = id => document.getElementById(id);
+const TMDB_BASE = 'https://image.tmdb.org/t/p/';
+let hasTmdb = false;   // will be set after first poster check
 
-// ── status check ──────────────────────────────────────────────────────────────
+/* ── status ───────────────────────────────────────────────────────── */
 async function checkStatus() {
   try {
-    const r = await fetch('/api/status');
-    const d = await r.json();
-    const dot = $('statusDot'), label = $('statusLabel'), banner = $('buildBanner');
+    const d = await fetch('/api/status').then(r => r.json());
     if (d.ready) {
-      dot.classList.add('ready');
-      label.textContent = `${d.movie_count.toLocaleString()} films indexed`;
-      banner.style.display = 'none';
+      $('dot').classList.add('on');
+      $('statusLabel').textContent = `${d.movie_count.toLocaleString()} films indexed`;
+      $('buildBanner').style.display = 'none';
     } else {
-      label.textContent = 'Model not ready';
-      banner.style.display = 'block';
+      $('statusLabel').textContent = 'Model not ready';
+      $('buildBanner').style.display = 'block';
     }
-  } catch(e) { $('statusLabel').textContent = 'Offline'; }
+  } catch { $('statusLabel').textContent = 'Offline'; }
 }
 checkStatus();
 
-// ── build trigger ─────────────────────────────────────────────────────────────
+/* ── build trigger ────────────────────────────────────────────────── */
 $('buildLink').addEventListener('click', async () => {
-  $('buildLink').textContent = 'Training… (may take 30-60s)';
-  const r = await fetch('/api/build', { method: 'POST' });
-  const d = await r.json();
-  if (d.status === 'ok') { checkStatus(); $('buildBanner').style.display = 'none'; }
-  else { $('buildBanner').textContent = 'Error: ' + d.error; }
+  $('buildLink').textContent = 'Training… (may take ~60s)';
+  const d = await fetch('/api/build', { method: 'POST' }).then(r => r.json());
+  if (d.status === 'ok') { checkStatus(); }
+  else { $('buildBanner').innerHTML = 'Error: ' + d.error; }
 });
 
-// ── autocomplete ──────────────────────────────────────────────────────────────
-let acTimer = null, selectedAC = -1;
-const input = $('searchInput'), acList = $('acList');
+/* ── autocomplete ─────────────────────────────────────────────────── */
+const input  = $('searchInput');
+const acList = $('acList');
+let acTimer  = null;
+let selIdx   = -1;
 
 input.addEventListener('input', () => {
   clearTimeout(acTimer);
   const q = input.value.trim();
   if (q.length < 2) { closeAC(); return; }
-  acTimer = setTimeout(() => fetchAC(q), 200);
+  acTimer = setTimeout(() => loadAC(q), 180);
 });
 
-async function fetchAC(q) {
-  const r = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
-  const titles = await r.json();
-  renderAC(titles);
+async function loadAC(q) {
+  try {
+    const titles = await fetch(`/api/search?q=${encodeURIComponent(q)}`).then(r => r.json());
+    renderAC(titles);
+  } catch { closeAC(); }
 }
 
 function renderAC(titles) {
   if (!titles.length) { closeAC(); return; }
-  acList.innerHTML = titles.map((t,i) =>
-    `<div class="ac-item" data-title="${t}" data-idx="${i}">${t}</div>`).join('');
-  acList.classList.add('open');
-  selectedAC = -1;
-  acList.querySelectorAll('.ac-item').forEach(el => {
-    el.addEventListener('click', () => { input.value = el.dataset.title; closeAC(); recommend(); });
+  acList.innerHTML = '';
+  titles.forEach(title => {
+    const div = document.createElement('div');
+    div.className = 'ac-item';
+    div.textContent = title;
+
+    /* ✅ FIX: mousedown fires BEFORE blur, so the input value is set
+       before the dropdown closes. Using 'click' alone can miss on some
+       browsers when focus shifts. We use 'mousedown' + preventDefault
+       to keep focus in the input while still filling the value. */
+    div.addEventListener('mousedown', e => {
+      e.preventDefault();           // keep input focused
+      input.value = title;
+      closeAC();
+      recommend();
+    });
+
+    acList.appendChild(div);
   });
+  acList.classList.add('open');
+  selIdx = -1;
 }
 
-function closeAC() { acList.classList.remove('open'); acList.innerHTML = ''; selectedAC = -1; }
+function closeAC() {
+  acList.classList.remove('open');
+  acList.innerHTML = '';
+  selIdx = -1;
+}
 
+/* keyboard nav */
 input.addEventListener('keydown', e => {
   const items = acList.querySelectorAll('.ac-item');
-  if (e.key === 'ArrowDown') { selectedAC = Math.min(selectedAC+1, items.length-1); highlightAC(items); e.preventDefault(); }
-  else if (e.key === 'ArrowUp') { selectedAC = Math.max(selectedAC-1, -1); highlightAC(items); e.preventDefault(); }
-  else if (e.key === 'Enter') {
-    if (selectedAC >= 0 && items[selectedAC]) { input.value = items[selectedAC].dataset.title; closeAC(); }
+  if (!items.length && e.key === 'Enter') { recommend(); return; }
+
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    selIdx = Math.min(selIdx + 1, items.length - 1);
+    highlight(items);
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    selIdx = Math.max(selIdx - 1, -1);
+    highlight(items);
+  } else if (e.key === 'Enter') {
+    if (selIdx >= 0 && items[selIdx]) {
+      input.value = items[selIdx].textContent;
+      closeAC();
+    }
     recommend();
+  } else if (e.key === 'Escape') {
+    closeAC();
   }
-  else if (e.key === 'Escape') closeAC();
 });
 
-function highlightAC(items) {
-  items.forEach((el,i) => el.classList.toggle('selected', i === selectedAC));
-  if (selectedAC >= 0) items[selectedAC].scrollIntoView({ block: 'nearest' });
+function highlight(items) {
+  items.forEach((el, i) => el.classList.toggle('selected', i === selIdx));
+  if (selIdx >= 0) items[selIdx].scrollIntoView({ block: 'nearest' });
 }
 
-document.addEventListener('click', e => { if (!e.target.closest('.search-wrap')) closeAC(); });
+/* close when clicking outside */
+document.addEventListener('mousedown', e => {
+  if (!e.target.closest('.search-wrap')) closeAC();
+});
 
-// ── recommend ─────────────────────────────────────────────────────────────────
+/* ── recommend ────────────────────────────────────────────────────── */
 $('searchBtn').addEventListener('click', recommend);
 
 async function recommend() {
@@ -411,82 +533,132 @@ async function recommend() {
   if (!title) return;
   closeAC();
 
-  $('spinner').classList.add('active');
-  $('emptyMsg').classList.remove('active');
-  $('errorMsg').classList.remove('active');
-  $('resultsHeader').style.display = 'none';
-  $('cardsGrid').innerHTML = '';
+  $('spinner').classList.add('on');
+  $('emptyMsg').classList.remove('on');
+  $('errMsg').classList.remove('on');
+  $('resultsHdr').style.display = 'none';
+  $('grid').innerHTML = '';
   $('searchBtn').disabled = true;
 
   try {
-    const r = await fetch(`/api/recommend?title=${encodeURIComponent(title)}&n=10`);
+    const r    = await fetch(`/api/recommend?title=${encodeURIComponent(title)}&n=10`);
     const data = await r.json();
-    $('spinner').classList.remove('active');
+
+    $('spinner').classList.remove('on');
     $('searchBtn').disabled = false;
 
     if (!r.ok) {
-      $('errorText').textContent = data.error || 'Something went wrong';
-      $('errorDetail').textContent = '';
-      $('errorMsg').classList.add('active');
+      $('errText').textContent   = data.error || 'Something went wrong';
+      $('errDetail').textContent = '';
+      $('errMsg').classList.add('on');
       return;
     }
-
-    if (!data.results || !data.results.length) {
-      $('emptyMsg').classList.add('active'); return;
-    }
+    if (!data.results?.length) { $('emptyMsg').classList.add('on'); return; }
 
     $('queryLabel').textContent = data.query;
-    $('resultsCount').textContent = `${data.results.length} matches`;
-    $('resultsHeader').style.display = 'flex';
+    $('rCount').textContent     = `${data.results.length} matches`;
+    $('resultsHdr').style.display = 'flex';
+
     renderCards(data.results);
-  } catch(e) {
-    $('spinner').classList.remove('active');
+
+  } catch (e) {
+    $('spinner').classList.remove('on');
     $('searchBtn').disabled = false;
-    $('errorText').textContent = 'Network error';
-    $('errorMsg').classList.add('active');
+    $('errText').textContent = 'Network error — is the server running?';
+    $('errMsg').classList.add('on');
   }
 }
 
+/* ── render cards ─────────────────────────────────────────────────── */
 function renderCards(movies) {
-  const grid = $('cardsGrid');
+  const grid     = $('grid');
   const maxScore = movies[0]?.score || 1;
+
   movies.forEach((m, i) => {
-    const pct = ((m.score / maxScore) * 100).toFixed(1);
-    const genres = (m.genres || []).slice(0,3).map(g =>
-      `<span class="genre-tag">${g}</span>`).join('');
-    const stars = m.rating ? `⭐ ${m.rating.toFixed(1)}` : '';
-    const year = m.year ? `<span class="card-year">${m.year}</span>` : '';
+    const pct      = ((m.score / maxScore) * 100).toFixed(1);
+    const genres   = (m.genres  || []).slice(0, 3).map(g => `<span class="gtag">${g}</span>`).join('');
+    const castStr  = (m.cast    || []).slice(0, 3).join(', ');
+    const director = (m.director|| []).join(', ');
+    const rating   = m.rating   ? `<span class="card-stars">⭐ ${m.rating.toFixed(1)}</span>` : '';
+    const year     = m.year     ? `<span class="card-year">${m.year}</span>` : '';
+    const overview = m.overview || '';
 
     const card = document.createElement('div');
     card.className = 'card';
-    card.style.animationDelay = `${i * 60}ms`;
+    card.style.animationDelay = `${i * 55}ms`;
+
     card.innerHTML = `
-      <div class="card-rank">#${i+1} MATCH</div>
+      <div class="card-poster" id="poster-${i}">
+        <div class="poster-placeholder">
+          <span class="film-icon">🎬</span>
+          <span>Loading…</span>
+        </div>
+        <span class="rank-badge">#${i + 1}</span>
+        <div class="match-strip"><div class="match-fill" id="bar-${i}"></div></div>
+      </div>
       <div class="card-body">
         <div class="card-title">${m.title}</div>
-        <div class="card-meta">
-          ${year}
-          ${stars ? `<span class="card-rating">${stars}</span>` : ''}
-        </div>
+        <div class="card-meta">${year}${rating}</div>
         <div class="card-genres">${genres}</div>
-        <div class="card-score-bar">
-          <div class="card-score-fill" style="width:0%" data-pct="${pct}"></div>
-        </div>
-        <div class="card-score-label">Similarity ${pct}%</div>
+        ${overview ? `<div class="card-overview" id="ov-${i}">${overview}</div>` : ''}
+        ${castStr  ? `<div class="card-cast"><strong>Cast:</strong> ${castStr}</div>` : ''}
+        ${director ? `<div class="card-cast"><strong>Dir:</strong> ${director}</div>` : ''}
+        <div class="match-label">Match ${pct}%</div>
       </div>`;
+
     grid.appendChild(card);
 
-    // animate bar after paint
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        card.querySelector('.card-score-fill').style.width = pct + '%';
-      });
-    });
+    // animate bar
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const bar = $(`bar-${i}`);
+      if (bar) bar.style.width = pct + '%';
+    }));
 
-    card.addEventListener('click', () => {
-      input.value = m.title; recommend();
-    });
+    // click → search that movie
+    card.addEventListener('click', () => { input.value = m.title; recommend(); });
+
+    // fetch poster asynchronously
+    fetchPoster(m.title, m.movie_id, i, overview);
   });
+}
+
+/* ── poster fetcher ───────────────────────────────────────────────── */
+async function fetchPoster(title, movieId, idx, fallbackOverview) {
+  try {
+    const params = new URLSearchParams({ title });
+    if (movieId) params.set('movie_id', movieId);
+    const d = await fetch(`/api/poster?${params}`).then(r => r.json());
+
+    const container = $(`poster-${idx}`);
+    if (!container) return;
+
+    // Show the TMDB API notice once if no key is configured
+    if (!hasTmdb && !d.poster && idx === 0) {
+      $('apiNotice').style.display = 'block';
+    }
+    if (d.poster) {
+      hasTmdb = true;
+      $('apiNotice').style.display = 'none';
+    }
+
+    if (d.poster) {
+      const img = document.createElement('img');
+      img.src = d.poster;
+      img.alt = title;
+      img.onload  = () => img.classList.add('loaded');
+      img.onerror = () => img.remove();
+      // clear placeholder, insert image (keep rank badge + bar)
+      container.querySelector('.poster-placeholder').remove();
+      container.insertBefore(img, container.firstChild);
+    }
+
+    // If TMDB returns a better/longer overview, update card text
+    if (d.overview) {
+      const ovEl = $(`ov-${idx}`);
+      if (ovEl) ovEl.textContent = d.overview;
+    }
+
+  } catch { /* silently ignore poster errors */ }
 }
 </script>
 </body>
