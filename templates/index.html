@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CineMatch — AI Movie Recommender</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #0a0a0f;
+    --surface:   #11111a;
+    --card:      #16161f;
+    --border:    #252535;
+    --accent:    #e8501a;
+    --accent2:   #f4a261;
+    --text:      #e8e8f0;
+    --muted:     #6b6b88;
+    --success:   #2ecc71;
+    --gold:      #f4c542;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── background film-grain overlay ─────────────────────────── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    opacity: 0.35;
+  }
+
+  /* ── header ─────────────────────────────────────────────────── */
+  header {
+    position: relative; z-index: 10;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1.4rem 3rem;
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(12px);
+    background: rgba(10,10,15,.85);
+  }
+
+  .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2rem;
+    letter-spacing: 0.06em;
+    color: var(--text);
+  }
+  .logo span { color: var(--accent); }
+
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--muted); display: inline-block;
+    transition: background .4s;
+  }
+  .status-dot.ready { background: var(--success); box-shadow: 0 0 8px var(--success); }
+
+  /* ── hero ────────────────────────────────────────────────────── */
+  .hero {
+    position: relative; z-index: 5;
+    text-align: center;
+    padding: 6rem 2rem 3rem;
+  }
+
+  .hero-eyebrow {
+    font-size: .75rem; letter-spacing: .2em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 1rem;
+  }
+
+  .hero h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(3.5rem, 8vw, 7rem);
+    line-height: 1;
+    letter-spacing: .03em;
+    color: var(--text);
+    margin-bottom: 1rem;
+  }
+
+  .hero h1 em {
+    font-style: normal;
+    -webkit-text-stroke: 1px var(--accent);
+    color: transparent;
+  }
+
+  .hero p {
+    color: var(--muted); font-size: 1rem; max-width: 480px;
+    margin: 0 auto 2.5rem; line-height: 1.7; font-weight: 300;
+  }
+
+  /* ── search box ──────────────────────────────────────────────── */
+  .search-wrap {
+    position: relative; z-index: 5;
+    max-width: 680px; margin: 0 auto; padding: 0 1.5rem 3rem;
+  }
+
+  .search-input-row {
+    position: relative;
+    display: flex; align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    transition: border-color .25s, box-shadow .25s;
+  }
+  .search-input-row:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(232,80,26,.15);
+  }
+
+  #searchInput {
+    flex: 1; background: transparent; border: none; outline: none;
+    color: var(--text); font-family: 'DM Sans', sans-serif;
+    font-size: 1rem; padding: 1rem 1.2rem;
+    caret-color: var(--accent);
+  }
+  #searchInput::placeholder { color: var(--muted); }
+
+  #searchBtn {
+    padding: .75rem 1.6rem;
+    background: var(--accent); border: none; cursor: pointer;
+    color: #fff; font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.05rem; letter-spacing: .08em;
+    transition: background .2s;
+    flex-shrink: 0;
+  }
+  #searchBtn:hover { background: #c94015; }
+  #searchBtn:disabled { background: var(--muted); cursor: default; }
+
+  /* ── autocomplete ────────────────────────────────────────────── */
+  .autocomplete-list {
+    position: absolute; top: 100%; left: 0; right: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: none; border-radius: 0 0 4px 4px;
+    overflow: hidden; z-index: 100;
+    max-height: 280px; overflow-y: auto;
+    display: none;
+  }
+  .autocomplete-list.open { display: block; }
+  .ac-item {
+    padding: .7rem 1.2rem; cursor: pointer; font-size: .9rem;
+    transition: background .15s;
+    border-bottom: 1px solid rgba(255,255,255,.04);
+  }
+  .ac-item:hover, .ac-item.selected { background: rgba(232,80,26,.12); }
+
+  /* ── results area ────────────────────────────────────────────── */
+  #results {
+    position: relative; z-index: 5;
+    max-width: 1100px; margin: 0 auto; padding: 0 1.5rem 6rem;
+  }
+
+  .results-header {
+    display: flex; align-items: baseline; gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  .results-header h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.6rem; letter-spacing: .06em; color: var(--text);
+  }
+  .results-header .query-title { color: var(--accent); }
+  .results-count { font-size: .8rem; color: var(--muted); }
+
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.2rem;
+  }
+
+  /* ── movie card ──────────────────────────────────────────────── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    transition: transform .2s, border-color .2s, box-shadow .2s;
+    opacity: 0;
+    animation: fadeUp .4s forwards;
+  }
+  .card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(232,80,26,.4);
+    box-shadow: 0 12px 32px rgba(0,0,0,.5);
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .card-rank {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: .75rem; letter-spacing: .12em;
+    color: var(--muted); padding: .75rem 1rem .25rem;
+  }
+
+  .card-body { padding: .25rem 1rem 1.1rem; }
+
+  .card-title {
+    font-size: 1rem; font-weight: 500; color: var(--text);
+    margin-bottom: .4rem; line-height: 1.3;
+  }
+
+  .card-meta {
+    display: flex; align-items: center; gap: .6rem;
+    flex-wrap: wrap; margin-bottom: .65rem;
+  }
+  .card-year { font-size: .78rem; color: var(--muted); }
+  .card-rating {
+    font-size: .78rem; color: var(--gold);
+    display: flex; align-items: center; gap: .2rem;
+  }
+
+  .card-genres {
+    display: flex; flex-wrap: wrap; gap: .35rem; margin-bottom: .75rem;
+  }
+  .genre-tag {
+    font-size: .68rem; text-transform: uppercase; letter-spacing: .08em;
+    padding: .2rem .55rem;
+    background: rgba(255,255,255,.05);
+    border: 1px solid var(--border);
+    border-radius: 2px; color: var(--muted);
+  }
+
+  .card-score-bar {
+    height: 2px; background: var(--border); border-radius: 2px; overflow: hidden;
+  }
+  .card-score-fill {
+    height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 2px; transition: width 1s ease;
+  }
+  .card-score-label {
+    font-size: .72rem; color: var(--muted); margin-top: .35rem;
+    text-align: right;
+  }
+
+  /* ── loading spinner ─────────────────────────────────────────── */
+  .spinner {
+    display: none; text-align: center; padding: 4rem;
+  }
+  .spinner.active { display: block; }
+  .spin-ring {
+    width: 40px; height: 40px; border-radius: 50%;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    animation: spin .7s linear infinite;
+    display: inline-block;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── error / empty ───────────────────────────────────────────── */
+  .message {
+    text-align: center; padding: 4rem 1rem;
+    color: var(--muted); font-size: .95rem; display: none;
+  }
+  .message.active { display: block; }
+  .message strong { color: var(--accent); display: block; font-size: 1.2rem; margin-bottom: .5rem; }
+
+  /* ── model status banner ─────────────────────────────────────── */
+  #buildBanner {
+    background: rgba(232,80,26,.1);
+    border: 1px solid rgba(232,80,26,.3);
+    border-radius: 4px;
+    padding: 1rem 1.5rem;
+    margin: 0 1.5rem 2rem;
+    max-width: 680px; margin-left: auto; margin-right: auto;
+    font-size: .88rem; color: var(--accent2); display: none;
+    position: relative; z-index: 5;
+  }
+  #buildBanner a {
+    color: var(--accent); text-decoration: underline; cursor: pointer;
+  }
+
+  /* ── scrollbar ───────────────────────────────────────────────── */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Cine<span>Match</span></div>
+  <div style="display:flex;align-items:center;gap:.5rem;font-size:.8rem;color:var(--muted)">
+    <span class="status-dot" id="statusDot"></span>
+    <span id="statusLabel">Checking…</span>
+  </div>
+</header>
+
+<section class="hero">
+  <p class="hero-eyebrow">AI-Powered · TF-IDF + LSA · 5000 Films · Kunal Kongari · IISc Bangalore</p>
+  <h1>Find Your<br>Next <em>Obsession</em></h1>
+  <p>Type any movie and get semantically matched recommendations — powered by TF-IDF vectorization and Latent Semantic Analysis.</p>
+</section>
+
+<div id="buildBanner">
+  ⚠ Model not loaded. Place <code>tmdb_5000_movies.csv</code> and <code>tmdb_5000_credits.csv</code> in the project root, then <a id="buildLink">click here to train</a>.
+</div>
+
+<div class="search-wrap">
+  <div class="search-input-row">
+    <input id="searchInput" type="text" placeholder="e.g. Inception, The Dark Knight, Parasite…" autocomplete="off">
+    <button id="searchBtn">Recommend</button>
+  </div>
+  <div class="autocomplete-list" id="acList"></div>
+</div>
+
+<section id="results">
+  <div class="spinner" id="spinner"><div class="spin-ring"></div></div>
+  <div class="message" id="emptyMsg"><strong>No results found.</strong>Try a different title.</div>
+  <div class="message" id="errorMsg"><strong id="errorText">Error</strong><span id="errorDetail"></span></div>
+  <div id="resultsHeader" class="results-header" style="display:none">
+    <h2>Because you liked <span class="query-title" id="queryLabel"></span></h2>
+    <span class="results-count" id="resultsCount"></span>
+  </div>
+  <div class="cards-grid" id="cardsGrid"></div>
+</section>
+
+<script>
+const $ = id => document.getElementById(id);
+
+// ── status check ──────────────────────────────────────────────────────────────
+async function checkStatus() {
+  try {
+    const r = await fetch('/api/status');
+    const d = await r.json();
+    const dot = $('statusDot'), label = $('statusLabel'), banner = $('buildBanner');
+    if (d.ready) {
+      dot.classList.add('ready');
+      label.textContent = `${d.movie_count.toLocaleString()} films indexed`;
+      banner.style.display = 'none';
+    } else {
+      label.textContent = 'Model not ready';
+      banner.style.display = 'block';
+    }
+  } catch(e) { $('statusLabel').textContent = 'Offline'; }
+}
+checkStatus();
+
+// ── build trigger ─────────────────────────────────────────────────────────────
+$('buildLink').addEventListener('click', async () => {
+  $('buildLink').textContent = 'Training… (may take 30-60s)';
+  const r = await fetch('/api/build', { method: 'POST' });
+  const d = await r.json();
+  if (d.status === 'ok') { checkStatus(); $('buildBanner').style.display = 'none'; }
+  else { $('buildBanner').textContent = 'Error: ' + d.error; }
+});
+
+// ── autocomplete ──────────────────────────────────────────────────────────────
+let acTimer = null, selectedAC = -1;
+const input = $('searchInput'), acList = $('acList');
+
+input.addEventListener('input', () => {
+  clearTimeout(acTimer);
+  const q = input.value.trim();
+  if (q.length < 2) { closeAC(); return; }
+  acTimer = setTimeout(() => fetchAC(q), 200);
+});
+
+async function fetchAC(q) {
+  const r = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+  const titles = await r.json();
+  renderAC(titles);
+}
+
+function renderAC(titles) {
+  if (!titles.length) { closeAC(); return; }
+  acList.innerHTML = titles.map((t,i) =>
+    `<div class="ac-item" data-title="${t}" data-idx="${i}">${t}</div>`).join('');
+  acList.classList.add('open');
+  selectedAC = -1;
+  acList.querySelectorAll('.ac-item').forEach(el => {
+    el.addEventListener('click', () => { input.value = el.dataset.title; closeAC(); recommend(); });
+  });
+}
+
+function closeAC() { acList.classList.remove('open'); acList.innerHTML = ''; selectedAC = -1; }
+
+input.addEventListener('keydown', e => {
+  const items = acList.querySelectorAll('.ac-item');
+  if (e.key === 'ArrowDown') { selectedAC = Math.min(selectedAC+1, items.length-1); highlightAC(items); e.preventDefault(); }
+  else if (e.key === 'ArrowUp') { selectedAC = Math.max(selectedAC-1, -1); highlightAC(items); e.preventDefault(); }
+  else if (e.key === 'Enter') {
+    if (selectedAC >= 0 && items[selectedAC]) { input.value = items[selectedAC].dataset.title; closeAC(); }
+    recommend();
+  }
+  else if (e.key === 'Escape') closeAC();
+});
+
+function highlightAC(items) {
+  items.forEach((el,i) => el.classList.toggle('selected', i === selectedAC));
+  if (selectedAC >= 0) items[selectedAC].scrollIntoView({ block: 'nearest' });
+}
+
+document.addEventListener('click', e => { if (!e.target.closest('.search-wrap')) closeAC(); });
+
+// ── recommend ─────────────────────────────────────────────────────────────────
+$('searchBtn').addEventListener('click', recommend);
+
+async function recommend() {
+  const title = input.value.trim();
+  if (!title) return;
+  closeAC();
+
+  $('spinner').classList.add('active');
+  $('emptyMsg').classList.remove('active');
+  $('errorMsg').classList.remove('active');
+  $('resultsHeader').style.display = 'none';
+  $('cardsGrid').innerHTML = '';
+  $('searchBtn').disabled = true;
+
+  try {
+    const r = await fetch(`/api/recommend?title=${encodeURIComponent(title)}&n=10`);
+    const data = await r.json();
+    $('spinner').classList.remove('active');
+    $('searchBtn').disabled = false;
+
+    if (!r.ok) {
+      $('errorText').textContent = data.error || 'Something went wrong';
+      $('errorDetail').textContent = '';
+      $('errorMsg').classList.add('active');
+      return;
+    }
+
+    if (!data.results || !data.results.length) {
+      $('emptyMsg').classList.add('active'); return;
+    }
+
+    $('queryLabel').textContent = data.query;
+    $('resultsCount').textContent = `${data.results.length} matches`;
+    $('resultsHeader').style.display = 'flex';
+    renderCards(data.results);
+  } catch(e) {
+    $('spinner').classList.remove('active');
+    $('searchBtn').disabled = false;
+    $('errorText').textContent = 'Network error';
+    $('errorMsg').classList.add('active');
+  }
+}
+
+function renderCards(movies) {
+  const grid = $('cardsGrid');
+  const maxScore = movies[0]?.score || 1;
+  movies.forEach((m, i) => {
+    const pct = ((m.score / maxScore) * 100).toFixed(1);
+    const genres = (m.genres || []).slice(0,3).map(g =>
+      `<span class="genre-tag">${g}</span>`).join('');
+    const stars = m.rating ? `⭐ ${m.rating.toFixed(1)}` : '';
+    const year = m.year ? `<span class="card-year">${m.year}</span>` : '';
+
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.style.animationDelay = `${i * 60}ms`;
+    card.innerHTML = `
+      <div class="card-rank">#${i+1} MATCH</div>
+      <div class="card-body">
+        <div class="card-title">${m.title}</div>
+        <div class="card-meta">
+          ${year}
+          ${stars ? `<span class="card-rating">${stars}</span>` : ''}
+        </div>
+        <div class="card-genres">${genres}</div>
+        <div class="card-score-bar">
+          <div class="card-score-fill" style="width:0%" data-pct="${pct}"></div>
+        </div>
+        <div class="card-score-label">Similarity ${pct}%</div>
+      </div>`;
+    grid.appendChild(card);
+
+    // animate bar after paint
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        card.querySelector('.card-score-fill').style.width = pct + '%';
+      });
+    });
+
+    card.addEventListener('click', () => {
+      input.value = m.title; recommend();
+    });
+  });
+}
+</script>
+</body>
+</html>
