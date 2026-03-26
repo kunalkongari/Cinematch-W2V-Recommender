@@ -1,5 +1,4 @@
 # Deploy to Render (render.com) — free tier
-# Push this repo to GitHub, then connect it on render.com
 services:
   - type: web
     name: cinematch-movie-recommender
@@ -10,4 +9,4 @@ services:
     startCommand: gunicorn --bind 0.0.0.0:$PORT --workers 1 --timeout 120 --preload app:app
     envVars:
       - key: PYTHON_VERSION
-        value: 3.11.0
+        value: 3.11.8
